@@ -1,73 +1,160 @@
-import Image from "next/image";
+"use client";
+import React, { useState, useEffect, useCallback } from "react";
+import InitSetter from "@/app/components/InitSetter";
+import BankCounter from "@/app/components/BankCounter";
 
 export default function Home() {
+  const [counters, setCounters] = useState([
+    {
+      id: 1,
+      name: "Counter 1",
+      priority: 1,
+      processingTime: 2,
+      status: "idle",
+      processedClients: [],
+    },
+    {
+      id: 2,
+      name: "Counter 2",
+      priority: 2,
+      processingTime: 2,
+      status: "idle",
+      processedClients: [],
+    },
+    {
+      id: 3,
+      name: "Counter 3",
+      priority: 3,
+      processingTime: 2,
+      status: "idle",
+      processedClients: [],
+    },
+    {
+      id: 4,
+      name: "Counter 4",
+      priority: 4,
+      processingTime: 2,
+      status: "idle",
+      processedClients: [],
+    },
+  ]);
+  const [queue, setQueue] = useState([]);
+  const [totalClient, setTotalClient] = useState(1);
+  const [isCountersWorking, setIsCountersWorking] = useState(false);
+
+  const findHighPriorityCounter = (counters) => {
+    let resultCounter = counters[0];
+    counters.forEach((counter) => {
+      if (resultCounter.priority > counter.priority) resultCounter = counter;
+    });
+    return resultCounter;
+  };
+
+  const onInitialSetup = (startNumber, processingTimes) => {
+    const updatedCounters = counters.map((counter) => ({
+      ...counter,
+      processingTime: processingTimes[counter.name],
+    }));
+    const initialClient = Array.from(
+      { length: startNumber },
+      (_, index) => index + 1
+    );
+    setCounters(updatedCounters);
+    setQueue(initialClient);
+    setTotalClient(startNumber);
+    setIsCountersWorking(true);
+  };
+
+  const addNextClient = () => {
+    const newClientNumber = totalClient + 1;
+    setTotalClient((prev) => prev + 1);
+    setQueue((prev) => [...prev, newClientNumber]);
+  };
+
+  const processClient = useCallback(
+    (clientNumber, counter) => {
+      setTimeout(() => {
+        if (queue.length === 0) {
+          setCounters((prevCounters) => {
+            const updatedCounters = prevCounters.map((el) => {
+              if (el.id === counter.id) {
+                return {
+                  ...counter,
+                  status: "idle",
+                  processedClients: [...counter.processedClients, clientNumber],
+                };
+              } else return el;
+            });
+
+            return updatedCounters;
+          });
+        } else SystemMonitor();
+      }, counter.processingTime * 1000);
+    },
+    []
+  );
+
+  const assignClientToCounter = useCallback(
+    (clientNumber, counter) => {
+      setCounters((prevCounters) => {
+        const updatedCounters = prevCounters.map((el) => {
+          if (el.id === counter.id) {
+            return {
+              ...counter,
+              status: clientNumber,
+            };
+          } else return el;
+        });
+        return updatedCounters;
+      });
+      processClient(clientNumber, counter);
+      setQueue((prev) => prev.slice(1));
+    },
+    [processClient]
+  );
+
+  const SystemMonitor = useCallback(() => {
+    if (queue.length === 0) return;
+    let availableCounters = counters.filter(
+      (counter) => counter.status === "idle"
+    );
+    queue.forEach((clientNumber) => {
+      if (availableCounters.length === 0) return;
+      const idleCounter = findHighPriorityCounter(availableCounters);
+      assignClientToCounter(clientNumber, idleCounter);
+      availableCounters = availableCounters.filter(
+        (counter) => counter.id !== idleCounter.id
+      );
+    });
+    console.log(queue, "queue");
+  }, [queue, counters, assignClientToCounter]);
+
+  useEffect(() => {
+    let timer;
+    if (isCountersWorking) {
+      timer = setInterval(() => {
+        SystemMonitor();
+        console.log("monitor is working");
+      }, 1000);
+    } else if (timer) {
+      clearInterval(timer);
+    }
+    return () => clearInterval(timer);
+  }, [isCountersWorking, SystemMonitor, counters]);
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Please complete the task by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/axi.svg"
-              alt="axi Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          See the example by opening bank-counter.gif
-        </p>
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-2 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800 hover:dark:bg-opacity-30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+    <main className="flex min-h-screen flex-col bg-gradient-to-l p-4 from-gray-200 via-fuchsia-200 to-stone-100">
+      <InitSetter
+        onInitialSetup={onInitialSetup}
+        counters={counters}
+        totalClient={totalClient}
+      />
+      <div className="absolute flex justify-center w-full mt-24">
+        <BankCounter
+          counters={counters}
+          addNextClient={addNextClient}
+          queue={queue}
+        />
       </div>
     </main>
   );
